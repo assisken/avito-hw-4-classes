@@ -19,14 +19,8 @@ class TooLowPriceError(Error):
     pass
 
 
-class Advert:
-    title: str
-    price: int
-
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.__dict__})'
-
-    def __init__(self, obj: Dict[str, Any], first_call: bool = True):
+class JsonObject:
+    def __init__(self, obj: Dict[str, Any]):
         for k, v in obj.items():
             if not k.isidentifier():
                 raise NotAllowedKeyError(f'"{k}" is not valid identifier')
@@ -34,15 +28,25 @@ class Advert:
                 raise NotAllowedKeyError(f'"{k} is keyword"')
 
             if isinstance(v, dict):
-                setattr(self, k, Advert(v, first_call=False))
-                continue
-            setattr(self, k, v)
+                setattr(self, k, JsonObject(v))
+            else:
+                setattr(self, k, v)
 
-        if first_call:
-            self.price = obj.get('price', 0)
 
-            if not hasattr(self, "title"):
-                raise RequiredFieldError("Отсутствует поле title")
+class Advert(JsonObject):
+    title: str
+    price: int
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.__dict__})'
+
+    def __init__(self, obj: Dict[str, Any]):
+        super().__init__(obj)
+
+        if not hasattr(self, "title"):
+            raise RequiredFieldError("Отсутствует поле title")
+        if not hasattr(self, 'price'):
+            self.price = 0
 
     @property
     def price(self):
@@ -63,10 +67,12 @@ if __name__ == '__main__':
         "location": {
             "address": "город Москва, Лесная, 7",
             "metro_stations": ["Белорусская"]
-            }
+            },
+        "yield": 123
         }"""
     advert = Advert(json.loads(data))
 
     print(advert)
     print(advert.location.address)
     print(advert.price)
+    print(advert.foo)
